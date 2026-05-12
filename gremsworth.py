@@ -438,6 +438,7 @@ class GremsworthApp:
                          font=("Segoe UI", 9, "bold"))
         self.menu.add_command(label="🍅 Focus Mode (25m)", command=self._start_focus)
         self.menu.add_command(label="🔍 Quick Search", command=self._quick_search)
+        self.menu.add_command(label="💬 Chat with Koko", command=self._chat)
         
         # Timesheet Tracker
         self.time_menu = Menu(self.menu, tearoff=0, bg="#111827", fg="#ffcc80",
@@ -466,9 +467,11 @@ class GremsworthApp:
         self.menu.add_separator()
         self.menu.add_command(label="🐾 Follow Mouse", command=self._toggle_follow)
         self.menu.add_command(label="🎾 Play Fetch", command=self._play_fetch)
+        self.menu.add_command(label="🌱 Plant a Seed", command=self._plant_seed)
         self.menu.add_command(label="🪟 Toggle Window Perch", command=self._toggle_perch)
         self.menu.add_command(label="📸 Take Screenshot", command=self._take_screenshot)
         self.menu.add_command(label="🧹 Clean PC Trash", command=self._clean_temp)
+        self.menu.add_command(label="🧠 Free Up RAM", command=self._clean_ram)
         self.menu.add_separator()
         self.menu.add_command(label="🍌 Feed Monkey", command=self._feed)
         self.menu.add_command(label="👉 Poke him",        command=self._poke)
@@ -827,6 +830,17 @@ class GremsworthApp:
             # Window Perch 🪟 Check (Every second)
             if getattr(self, "window_perch", False):
                 self._update_window_rects()
+                
+            # Plant Growth Check (Every 10s)
+            if sys_tick % 10 == 0:
+                if hasattr(self, "plant") and self.plant and self.plant.winfo_exists():
+                    if getattr(self.plant, "stage", 0) < 3:
+                        if time.time() - getattr(self.plant, "last_growth", 0) > 30:
+                            self.plant.stage += 1
+                            self.plant.last_growth = time.time()
+                            self._draw_plant()
+                            if self.plant.stage == 3:
+                                self._speak("The seed grew into a beautiful flower! 🌸", "excited", 5.0)
             
             # 2. Distraction Yeller (Focus Mode Check) - Every 5s
             if sys_tick % 5 == 0 and self.state == "focus":
@@ -1008,6 +1022,67 @@ class GremsworthApp:
                 self._speak("Taking you directly there!", "excited", 3.0)
             webbrowser.open_new_tab(url)
 
+    def _chat(self):
+        self.last_activity = time.time()
+        msg = simpledialog.askstring("Chat with Koko", "Say something to Koko:", parent=self.root)
+        if not msg:
+            return
+            
+        msg = msg.lower().strip()
+        
+        words = msg.split()
+        greeting_keywords = {"hello", "hi", "hey", "hola", "howdy", "sup", "greetings", "yo"}
+        
+        if "good morning" in msg:
+            self._speak("Good morning! Time for bananas! 🌅🍌", "excited", 4.0)
+        elif "good afternoon" in msg:
+            self._speak("Good afternoon! Hope you're having a good day! ☀️🐒", "excited", 4.0)
+        elif "good evening" in msg:
+            self._speak("Good evening! Working late? 🌙🐒", "idle", 4.0)
+        elif "good night" in msg:
+            self._set_state("sleep")
+            self._speak("Good night... Zzz 💤", "sleep", 4.0)
+        elif any(w in greeting_keywords for w in words) or "what's up" in msg:
+            responses = [
+                "Hello there! 🐒",
+                "Hey! Got any bananas? 🍌",
+                "Hi! I'm ready to work! 💻",
+                "Hola! 🐾",
+                "Ooo ooo ah ah! (Hello!) 🐵",
+                "Greetings, human! ✨",
+                "Sup? 🐒"
+            ]
+            self._speak(random.choice(responses), "excited", 4.0)
+        elif "open notepad" in msg:
+            self._open_notepad()
+        elif "dance" in msg:
+            self._dance()
+        elif "sleep" in msg:
+            self._set_state("sleep")
+            self._speak("Zzz...", "sleep", 4.0)
+        elif "focus" in msg:
+            self._start_focus()
+        elif "fetch" in msg:
+            self._play_fetch()
+        elif "plant" in msg or "seed" in msg:
+            self._plant_seed()
+        elif "clean ram" in msg or "free ram" in msg:
+            self._clean_ram()
+        elif "clean" in msg:
+            self._clean_temp()
+        elif "how are you" in msg:
+            self._speak("I'm doing great! Ready to work!", "excited", 4.0)
+        elif "joke" in msg:
+            self._speak("Why did the monkey like the banana?\nBecause it had appeal! 🍌", "excited", 6.0)
+        elif "time" in msg:
+            self._speak("It's currently " + datetime.now().strftime("%I:%M %p") + " ⏰", "excited", 4.0)
+        elif "love you" in msg:
+            self._speak("I love you too! 💗🐒", "excited", 4.0)
+        elif "are you working" in msg:
+            self._speak("I'm always working! 💻🐒", "excited", 4.0)
+        else:
+            self._speak("I'm just a monkey. I don't understand everything yet. 🐒", "idle", 4.0)
+
     def _start_project(self):
         if self.current_project:
             self._stop_project()
@@ -1169,6 +1244,102 @@ class GremsworthApp:
             time.sleep(1.5)
             self._speak(f"Done! Swept {mb:.1f} MB\nof garbage! 🍌", "excited", 5.0)
         threading.Thread(target=worker, daemon=True).start()
+
+    def _clean_ram(self):
+        self.last_activity = time.time()
+        self._speak("Optimizing RAM... 🧠", "focus", 3.0)
+        def worker():
+            count = 0
+            for proc in psutil.process_iter(['pid']):
+                try:
+                    handle = ctypes.windll.kernel32.OpenProcess(0x0100 | 0x0400, False, proc.info['pid'])
+                    if handle:
+                        ctypes.windll.psapi.EmptyWorkingSet(handle)
+                        ctypes.windll.kernel32.CloseHandle(handle)
+                        count += 1
+                except Exception:
+                    pass
+            time.sleep(1.5)
+            self._speak(f"RAM optimized!\nTrimmed {count} processes! ✨", "excited", 5.0)
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _plant_seed(self):
+        if hasattr(self, "plant") and self.plant and self.plant.winfo_exists():
+            self._speak("I already planted something!", "angry", 3.0)
+            return
+
+        self.last_activity = time.time()
+        self._speak("Planting a little seed... 🌱", "excited", 3.0)
+
+        self.plant = tk.Toplevel(self.root)
+        self.plant.overrideredirect(True)
+        self.plant.attributes("-topmost", True)
+        self.plant.attributes("-transparentcolor", TRANS)
+        self.plant.configure(bg=TRANS)
+        
+        px = self.x + GOBLIN_W//2 - 12
+        py = self.y + GOBLIN_H - 36
+        self.plant.geometry(f"24x36+{int(px)}+{int(py)}")
+        
+        c = tk.Canvas(self.plant, width=24, height=36, bg=TRANS, highlightthickness=0)
+        c.pack()
+        
+        self.plant.canvas = c
+        self.plant.stage = 0
+        self.plant.last_growth = time.time()
+        
+        def on_plant_click(e):
+            self.plant.destroy()
+            self._speak("Harvested! 🌸", "excited", 3.0)
+        self.plant.bind("<ButtonPress-1>", on_plant_click)
+        
+        self._draw_plant()
+        self._set_state("focus")
+        
+        def water_animation():
+            time.sleep(1)
+            self._speak("Watering it! 💧", "excited", 3.0)
+            for i in range(4):
+                px_drop = int(px) + 12 + random.randint(-4, 4)
+                py_drop = int(py) - 10 + random.randint(-4, 4)
+                canvas_id = self.canvas.create_text(
+                    px_drop - self.x, py_drop - self.y, text="💧", fill="#4fc3f7", font=("Segoe UI", 10)
+                )
+                self.particles.append((canvas_id, px_drop - self.x, py_drop - self.y, 15))
+                time.sleep(0.4)
+            self._set_state("idle")
+            
+        threading.Thread(target=water_animation, daemon=True).start()
+
+    def _draw_plant(self):
+        if not hasattr(self, "plant") or not self.plant.winfo_exists():
+            return
+        c = self.plant.canvas
+        c.delete("all")
+        stage = self.plant.stage
+        
+        c.create_polygon(6, 36, 18, 36, 20, 26, 4, 26, fill="#d84315", outline="#bf360c")
+        c.create_oval(4, 24, 20, 28, fill="#5d4037", outline="")
+        
+        if stage == 0:
+            c.create_oval(10, 25, 14, 29, fill="#8d6e63", outline="")
+        elif stage == 1:
+            c.create_line(12, 26, 12, 18, fill="#66bb6a", width=2)
+            c.create_oval(10, 16, 14, 20, fill="#4caf50", outline="")
+        elif stage == 2:
+            c.create_line(12, 26, 12, 14, fill="#66bb6a", width=2)
+            c.create_oval(6, 16, 10, 20, fill="#4caf50", outline="") 
+            c.create_oval(14, 14, 18, 18, fill="#4caf50", outline="") 
+            c.create_oval(10, 10, 14, 14, fill="#4caf50", outline="") 
+        elif stage >= 3:
+            c.create_line(12, 26, 12, 12, fill="#66bb6a", width=2)
+            c.create_oval(6, 18, 10, 22, fill="#4caf50", outline="") 
+            c.create_oval(14, 14, 18, 18, fill="#4caf50", outline="") 
+            c.create_oval(8, 4, 16, 12, fill="#ffeb3b", outline="") 
+            c.create_oval(4, 4, 10, 10, fill="#ff4081", outline="") 
+            c.create_oval(14, 4, 20, 10, fill="#ff4081", outline="") 
+            c.create_oval(8, 0, 14, 6, fill="#ff4081", outline="") 
+            c.create_oval(8, 8, 14, 14, fill="#ff4081", outline="") 
 
     def _on_release(self, event):
         self.is_dragging = False
