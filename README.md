@@ -37,7 +37,6 @@ You can converse with Koko by right-clicking him and selecting **"💬 Chat with
 *   **"good evening"**: Koko asks if you're working late. 🌙
 *   **"good night"**: Koko immediately puts himself to sleep! 💤
 *   **"how are you"**: Koko expresses his eagerness to work.
-*   **"love you"** / **"i love you"**: Koko sends some love back. 💗
 *   **"time"** / **"what time is it"**: Koko will check your system and tell you the exact current time. ⏰
 *   **"joke"**: Koko tells a monkey-related pun.
 *   **"are you working"**: Koko confirms he's always on the job. 💻
